@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-Hans">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/time-record/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+  
+  
+  
+  
+
+  
+    
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+    
+    
+    <link href="//fonts.googleapis.com/css?family=Lato:300,300italic,400,400italic,700,700italic&subset=latin,latin-ext" rel="stylesheet" type="text/css">
+  
+
+
+
+
+
+
+<link href="/time-record/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/time-record/css/main.css?v=5.1.2" rel="stylesheet" type="text/css" />
+
+
+  <meta name="keywords" content="Vue.js," />
+
+
+
+
+
+
+
+
+  <link rel="shortcut icon" type="image/x-icon" href="/time-record/favicon.ico?v=5.1.2" />
+
+
+
+
+
+
+<meta name="description" content="原文 Vue.js Internals: How computed properties work  这篇文章我们我会用很简单的方法来实现类似计算属性的效果，以此学习Vue.js的计算属性的运行机制。  这个例子只说明运行机制，不支持对象、数组、watching/unwatching等Vue.js已实现的一大堆优化 看完源代码带着我有限的理解写的这篇文章，可能会有一些错误，如发现错误，请联系我">
+<meta name="keywords" content="Vue.js">
+<meta property="og:type" content="article">
+<meta property="og:title" content="【翻译】Vue.js源码分析：计算属性如何工作">
+<meta property="og:url" content="https://ssshooter.github.io/2017/08/03/【翻译】Vue.js源码分析：计算属性如何工作/index.html">
+<meta property="og:site_name" content="Time Record">
+<meta property="og:description" content="原文 Vue.js Internals: How computed properties work  这篇文章我们我会用很简单的方法来实现类似计算属性的效果，以此学习Vue.js的计算属性的运行机制。  这个例子只说明运行机制，不支持对象、数组、watching/unwatching等Vue.js已实现的一大堆优化 看完源代码带着我有限的理解写的这篇文章，可能会有一些错误，如发现错误，请联系我">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="https://ssshooter.github.io/time-record/2017/08/03/【翻译】Vue.js源码分析：计算属性如何工作/compprop1.png">
+<meta property="og:image" content="https://ssshooter.github.io/time-record/2017/08/03/【翻译】Vue.js源码分析：计算属性如何工作/compprop2.png">
+<meta property="og:image" content="https://ssshooter.github.io/time-record/2017/08/03/【翻译】Vue.js源码分析：计算属性如何工作/compprop3.png">
+<meta property="og:image" content="https://ssshooter.github.io/time-record/2017/08/03/【翻译】Vue.js源码分析：计算属性如何工作/compprop4.png">
+<meta property="og:image" content="https://ssshooter.github.io/time-record/2017/08/03/【翻译】Vue.js源码分析：计算属性如何工作/vue.png">
+<meta property="og:updated_time" content="2017-08-12T13:14:42.124Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="【翻译】Vue.js源码分析：计算属性如何工作">
+<meta name="twitter:description" content="原文 Vue.js Internals: How computed properties work  这篇文章我们我会用很简单的方法来实现类似计算属性的效果，以此学习Vue.js的计算属性的运行机制。  这个例子只说明运行机制，不支持对象、数组、watching/unwatching等Vue.js已实现的一大堆优化 看完源代码带着我有限的理解写的这篇文章，可能会有一些错误，如发现错误，请联系我">
+<meta name="twitter:image" content="https://ssshooter.github.io/time-record/2017/08/03/【翻译】Vue.js源码分析：计算属性如何工作/compprop1.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/time-record/',
+    scheme: 'Pisces',
+    sidebar: {"position":"left","display":"post","offset":12,"offset_float":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: true,
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://ssshooter.github.io/2017/08/03/【翻译】Vue.js源码分析：计算属性如何工作/"/>
+
+
+
+
+
+  <title>【翻译】Vue.js源码分析：计算属性如何工作 | Time Record</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail ">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/time-record/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Time Record</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">Time Record</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/time-record/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/time-record/categories/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br />
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/time-record/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
+            
+            归档
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/time-record/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />
+            
+            标签
+          </a>
+        </li>
+      
+
+      
+        <li class="menu-item menu-item-search">
+          
+            <a href="javascript:;" class="popup-trigger">
+          
+            
+              <i class="menu-item-icon fa fa-search fa-fw"></i> <br />
+            
+            搜索
+          </a>
+        </li>
+      
+    </ul>
+  
+
+  
+    <div class="site-search">
+      
+  <div class="popup search-popup local-search-popup">
+  <div class="local-search-header clearfix">
+    <span class="search-icon">
+      <i class="fa fa-search"></i>
+    </span>
+    <span class="popup-btn-close">
+      <i class="fa fa-times-circle"></i>
+    </span>
+    <div class="local-search-input-wrapper">
+      <input autocomplete="off"
+             placeholder="搜索..." spellcheck="false"
+             type="text" id="local-search-input">
+    </div>
+  </div>
+  <div id="local-search-result"></div>
+</div>
+
+
+
+    </div>
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://ssshooter.github.io/time-record/2017/08/03/【翻译】Vue.js源码分析：计算属性如何工作/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="SSShooter">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="https://avatars0.githubusercontent.com/u/13051472?v=4&u=fee65df1cfdde2dfd87c5f59cf5b4fd302341b18&s=400">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Time Record">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">【翻译】Vue.js源码分析：计算属性如何工作</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2017-08-03T21:43:44+08:00">
+                2017-08-03
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/time-record/categories/翻译/" itemprop="url" rel="index">
+                    <span itemprop="name">翻译</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+            <!--noindex-->
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/time-record/2017/08/03/【翻译】Vue.js源码分析：计算属性如何工作/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count hc-comment-count" data-xid="2017/08/03/【翻译】Vue.js源码分析：计算属性如何工作/" itemprop="commentsCount"></span>
+                </a>
+              </span>
+              <!--/noindex-->
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <blockquote>
+<p><strong>原文</strong> <a href="https://www.skyronic.com/blog/vuejs-internals-computed-properties" target="_blank" rel="external">Vue.js Internals: How computed properties work</a></p>
+</blockquote>
+<p>这篇文章我们我会用很简单的方法来实现类似计算属性的效果，以此学习Vue.js的计算属性的运行机制。</p>
+<ol>
+<li>这个例子只说明运行机制，不支持对象、数组、watching/unwatching等Vue.js已实现的一大堆优化</li>
+<li>看完源代码带着我有限的理解写的这篇文章，可能会有一些错误，如发现错误，请<a href="skyronic@gmail.com">联系我</a><a id="more"></a>
+<h1 id="JS的属性"><a href="#JS的属性" class="headerlink" title="JS的属性"></a>JS的属性</h1>JS有<code>Object.defineProperty</code>方法，它能做的事情很多，但我们先关注这一点：<figure class="highlight javascript"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">var</span> person = &#123;&#125;;</div><div class="line"></div><div class="line"><span class="built_in">Object</span>.defineProperty (person, <span class="string">'age'</span>, &#123;</div><div class="line">  get: <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</div><div class="line">    <span class="built_in">console</span>.log (<span class="string">"Getting the age"</span>);</div><div class="line">    <span class="keyword">return</span> <span class="number">25</span>;</div><div class="line">  &#125;</div><div class="line">&#125;);</div><div class="line"></div><div class="line"><span class="built_in">console</span>.log (<span class="string">"The age is "</span>, person.age);</div><div class="line"></div><div class="line"><span class="comment">// 输出:</span></div><div class="line"><span class="comment">//</span></div><div class="line"><span class="comment">// Getting the age</span></div><div class="line"><span class="comment">// The age is 25</span></div></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>虽然看起来我们只是访问了对象的一个属性，但是其实我们是在运行一个函数。</p>
+<h1 id="基础的Vue-js-Observable"><a href="#基础的Vue-js-Observable" class="headerlink" title="基础的Vue.js Observable"></a>基础的Vue.js Observable</h1><p>Vue.js有一个基础结构，它可以帮你把一个常规的对象转换成一个“被观察”的值，这个值就叫做“observable”。以下是一个实现响应式属性的例子<br><figure class="highlight javascript"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div></pre></td><td class="code"><pre><div class="line"><span class="function"><span class="keyword">function</span> <span class="title">defineReactive</span> (<span class="params">obj, key, val</span>) </span>&#123;</div><div class="line">  <span class="built_in">Object</span>.defineProperty (obj, key, &#123;</div><div class="line">    get: <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</div><div class="line">      <span class="keyword">return</span> val;</div><div class="line">    &#125;,</div><div class="line">    set: <span class="function"><span class="keyword">function</span> (<span class="params">newValue</span>) </span>&#123;</div><div class="line">      val = newValue;</div><div class="line">    &#125;</div><div class="line">  &#125;)</div><div class="line">&#125;;</div><div class="line"></div><div class="line"><span class="comment">// 创建对象</span></div><div class="line"><span class="keyword">var</span> person = &#123;&#125;;</div><div class="line"></div><div class="line"><span class="comment">// 添加两个响应式属性</span></div><div class="line">defineReactive (person, <span class="string">'age'</span>, <span class="number">25</span>);</div><div class="line">defineReactive (person, <span class="string">'country'</span>, <span class="string">'Brazil'</span>);</div><div class="line"></div><div class="line"><span class="comment">// 现在你可以使用这两个属性</span></div><div class="line"><span class="keyword">if</span> (person.age &lt; <span class="number">18</span>) &#123;</div><div class="line">  <span class="keyword">return</span> <span class="string">'minor'</span>;</div><div class="line">&#125;</div><div class="line"><span class="keyword">else</span> &#123;</div><div class="line">  <span class="keyword">return</span> <span class="string">'adult'</span>;</div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="comment">// 也可以给他们赋值</span></div><div class="line">person.country = <span class="string">'Russia'</span>;</div></pre></td></tr></table></figure></p>
+<p>有趣的是，<code>25</code>和<code>Brazil</code>仍是闭包变量<code>val</code>，当你赋值时，它们的值也会被修改。这个值不是存在于<code>person.country</code>，而是存在于getter函数闭包。</p>
+<h1 id="定义一个计算属性"><a href="#定义一个计算属性" class="headerlink" title="定义一个计算属性"></a>定义一个计算属性</h1><p>创建一个计算属性函数<code>defineComputed</code><br><figure class="highlight javascript"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div></pre></td><td class="code"><pre><div class="line">defineComputed (</div><div class="line">  person, <span class="comment">// the object to create computed property on</span></div><div class="line">  <span class="string">'status'</span>, <span class="comment">// the name of the computed property</span></div><div class="line">  <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123; <span class="comment">// the function which actually computes the property</span></div><div class="line">    <span class="built_in">console</span>.log (<span class="string">"status getter called"</span>)</div><div class="line">    <span class="keyword">if</span> (person.age &lt; <span class="number">18</span>) &#123;</div><div class="line">      <span class="keyword">return</span> <span class="string">'minor'</span>;</div><div class="line">    &#125;</div><div class="line">    <span class="keyword">else</span> &#123;</div><div class="line">      <span class="keyword">return</span> <span class="string">'adult'</span>;</div><div class="line">    &#125;</div><div class="line">  &#125;,</div><div class="line">  <span class="function"><span class="keyword">function</span> (<span class="params">newValue</span>) </span>&#123;</div><div class="line">    <span class="comment">// called when the computed value is updated</span></div><div class="line">    <span class="built_in">console</span>.log (<span class="string">"status has changed to"</span>, newValue)</div><div class="line">  &#125;</div><div class="line">&#125;);</div><div class="line"></div><div class="line"><span class="comment">// We can use the computed property like a regular property</span></div><div class="line"><span class="built_in">console</span>.log (<span class="string">"The person's status is: "</span>, person.status);</div></pre></td></tr></table></figure></p>
+<p>以下是<code>defineComputed</code>的简单实现。这个函数支持调用计算函数，但是暂不支持<code>updateCallback</code><br><figure class="highlight javascript"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line"><span class="function"><span class="keyword">function</span> <span class="title">defineComputed</span> (<span class="params">obj, key, computeFunc, updateCallback</span>) </span>&#123;</div><div class="line">  <span class="built_in">Object</span>.defineProperty (obj, key, &#123;</div><div class="line">    get: <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</div><div class="line">      <span class="comment">// call the compute function and return the value</span></div><div class="line">      <span class="keyword">return</span> computeFunc ();</div><div class="line">    &#125;,</div><div class="line">    set: <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</div><div class="line">      <span class="comment">// don't do anything. can't set computed funcs</span></div><div class="line">    &#125;</div><div class="line">  &#125;)</div><div class="line">&#125;</div></pre></td></tr></table></figure></p>
+<p>这个函数有两个问题</p>
+<ol>
+<li>每当属性被访问，计算函数都会运行</li>
+<li>这个函数不知道何时应该更新<figure class="highlight javascript"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div></pre></td><td class="code"><pre><div class="line"><span class="comment">// 我们希望达到这个效果</span></div><div class="line"></div><div class="line">person.age = <span class="number">17</span>;</div><div class="line"><span class="comment">// console: status has changed to: minor</span></div><div class="line"></div><div class="line">person.age = <span class="number">22</span>;</div><div class="line"><span class="comment">// console: status has changed to: adult</span></div></pre></td></tr></table></figure>
+</li>
+</ol>
+<h1 id="添加一个依赖跟踪器"><a href="#添加一个依赖跟踪器" class="headerlink" title="添加一个依赖跟踪器"></a>添加一个依赖跟踪器</h1><p>创建一个全局变量<code>Dep</code><br><figure class="highlight javascript"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">var</span> Dep = &#123;</div><div class="line">  target: <span class="literal">null</span></div><div class="line">&#125;;</div></pre></td></tr></table></figure></p>
+<p>这就是依赖跟踪器，现在我们把这个关键点融入<code>defineComputed</code><br><figure class="highlight javascript"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div></pre></td><td class="code"><pre><div class="line"><span class="function"><span class="keyword">function</span> <span class="title">defineComputed</span> (<span class="params">obj, key, computeFunc, updateCallback</span>) </span>&#123;</div><div class="line">  <span class="keyword">var</span> onDependencyUpdated = <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</div><div class="line">    <span class="comment">// TODO</span></div><div class="line">  &#125;</div><div class="line">  <span class="built_in">Object</span>.defineProperty (obj, key, &#123;</div><div class="line">    get: <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</div><div class="line">      <span class="comment">// Set the dependency target as this function</span></div><div class="line">      Dep.target = onDependencyUpdated;</div><div class="line">      <span class="keyword">var</span> value = computeFunc ();</div><div class="line">      Dep.target = <span class="literal">null</span>;</div><div class="line">    &#125;,</div><div class="line">    set: <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</div><div class="line">      <span class="comment">// don't do anything. can't set computed funcs</span></div><div class="line">    &#125;</div><div class="line">  &#125;)</div><div class="line">&#125;</div></pre></td></tr></table></figure></p>
+<p>我们现在回到定义响应式对象的步骤<br><figure class="highlight javascript"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div></pre></td><td class="code"><pre><div class="line"><span class="function"><span class="keyword">function</span> <span class="title">defineReactive</span> (<span class="params">obj, key, val</span>) </span>&#123;</div><div class="line">  <span class="comment">// all computed properties that depend on this</span></div><div class="line">  <span class="keyword">var</span> deps = [];</div><div class="line"></div><div class="line">  <span class="built_in">Object</span>.defineProperty (obj, key, &#123;</div><div class="line">    get: <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</div><div class="line">      <span class="comment">// 检查是否有计算属性调用这个getter</span></div><div class="line">      <span class="comment">// 顺便检查这个以来是否存在</span></div><div class="line">      <span class="keyword">if</span> (Dep.target &amp;&amp; ) &#123;</div><div class="line">        <span class="comment">// 添加依赖</span></div><div class="line">        deps.push (target);</div><div class="line">      &#125;</div><div class="line"></div><div class="line">      <span class="keyword">return</span> val;</div><div class="line">    &#125;,</div><div class="line">    set: <span class="function"><span class="keyword">function</span> (<span class="params">newValue</span>) </span>&#123;</div><div class="line">      val = newValue;</div><div class="line"></div><div class="line">      <span class="comment">// 通知所有依赖这个值的计算属性</span></div><div class="line">      deps.forEach (<span class="function">(<span class="params">changeFunction</span>) =&gt;</span> &#123;</div><div class="line">        <span class="comment">// 请求重新计算</span></div><div class="line">        changeFunction ();</div><div class="line">      &#125;);</div><div class="line">    &#125;</div><div class="line">  &#125;)</div><div class="line">&#125;;</div></pre></td></tr></table></figure></p>
+<p>我们在计算属性的定义里更新<code>onDependencyUpdated</code>函数，用以触发更新回调函数。<br><figure class="highlight javascript"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">var</span> onDependencyUpdated = <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</div><div class="line">  <span class="comment">// compute the value again</span></div><div class="line">  <span class="keyword">var</span> value = computeFunc ();</div><div class="line">  updateCallback (value);</div><div class="line">&#125;</div></pre></td></tr></table></figure></p>
+<h1 id="综合上述代码"><a href="#综合上述代码" class="headerlink" title="综合上述代码"></a>综合上述代码</h1><p>从新看回我们之前定义的计算属性<code>person.status</code><br><figure class="highlight javascript"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div></pre></td><td class="code"><pre><div class="line">person.age = <span class="number">22</span>;</div><div class="line"></div><div class="line">defineComputed (</div><div class="line">  person,</div><div class="line">  <span class="string">'status'</span>,</div><div class="line">  <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</div><div class="line">    <span class="comment">// compute function</span></div><div class="line">    <span class="keyword">if</span> (person.age &gt; <span class="number">18</span>) &#123;</div><div class="line">      <span class="keyword">return</span> <span class="string">'adult'</span>;</div><div class="line">    &#125;</div><div class="line">  &#125;,</div><div class="line">  <span class="function"><span class="keyword">function</span> (<span class="params">newValue</span>) </span>&#123;</div><div class="line">    <span class="built_in">console</span>.log (<span class="string">"status has changed to"</span>, newValue)</div><div class="line">  &#125;</div><div class="line">&#125;);</div><div class="line"></div><div class="line"><span class="built_in">console</span>.log (<span class="string">"Status is "</span>, person.status);</div></pre></td></tr></table></figure></p>
+<h2 id="第一步："><a href="#第一步：" class="headerlink" title="第一步："></a>第一步：</h2><p><code>person.status</code>被访问，触发了<code>get()</code>函数，<code>Dep.target</code>现在是<code>onDependencyUpdated</code><br><img src="/time-record/2017/08/03/【翻译】Vue.js源码分析：计算属性如何工作/compprop1.png" alt="compprop1.png" title=""></p>
+<h2 id="第二步："><a href="#第二步：" class="headerlink" title="第二步："></a>第二步：</h2><p>（计算属性的<code>get()</code>函数第二行）调用了计算函数<code>computeFunc</code>,而这个计算函数又调用了age属性，也就是触发了age属性的<code>get()</code><br><img src="/time-record/2017/08/03/【翻译】Vue.js源码分析：计算属性如何工作/compprop2.png" alt="compprop2.png" title=""></p>
+<h2 id="第三步："><a href="#第三步：" class="headerlink" title="第三步："></a>第三步：</h2><p>看回age属性的<code>get()</code>，如果<code>Dep.target</code>当前是有值的话，这个值就会被push到依赖列表（所以现在<code>onDependencyUpdated</code>就在age属性的依赖列表里咯），之后<code>Dep.target</code>会被赋值为<code>null</code><br><img src="/time-record/2017/08/03/【翻译】Vue.js源码分析：计算属性如何工作/compprop3.png" alt="compprop3.png" title=""></p>
+<h2 id="第四步："><a href="#第四步：" class="headerlink" title="第四步："></a>第四步：</h2><p>现在，每当<code>person.age</code>被赋值，都会通知<code>person.status</code>啦<br><img src="/time-record/2017/08/03/【翻译】Vue.js源码分析：计算属性如何工作/compprop4.png" alt="compprop4.png" title=""></p>
+<hr>
+<p><strong>某译者的胡说八道</strong><br>如作者所说这个例子只是简化版，像官网说计算属性是基于它们的依赖进行缓存的这点没有表现出来，所以更多细节请研究Vue的源码<br>但是读了这篇文章我们可以知道计算属性更新是依赖data的属性通知的，所以必须调用了data的属性才会“重新计算”，否则永远不会更新<br>这就是为什么官网说</p>
+<blockquote>
+<img src="/time-record/2017/08/03/【翻译】Vue.js源码分析：计算属性如何工作/vue.png" alt="vue.png" title="">
+</blockquote>
+<p>如果计算函数里面调用了多个属性，那么这些属性更新时都会通知这个计算函数。</p>
+<blockquote>
+<p><strong>其他参考</strong> <a href="https://zjy.name/archives/vue-reactive-study.html" target="_blank" rel="external">Vue 响应式原理探析</a></p>
+</blockquote>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/time-record/tags/Vue-js/" rel="tag"># Vue.js</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/time-record/2017/08/07/my-first-post/" rel="prev" title="my first post">
+                my first post <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+        <!-- JiaThis Button BEGIN -->
+<div class="jiathis_style">
+  <a class="jiathis_button_tsina"></a>
+  <a class="jiathis_button_tqq"></a>
+  <a class="jiathis_button_weixin"></a>
+  <a class="jiathis_button_cqq"></a>
+  <a class="jiathis_button_douban"></a>
+  <a class="jiathis_button_renren"></a>
+  <a class="jiathis_button_qzone"></a>
+  <a class="jiathis_button_kaixin001"></a>
+  <a class="jiathis_button_copy"></a>
+  <a href="http://www.jiathis.com/share" class="jiathis jiathis_txt jiathis_separator jtico jtico_jiathis" target="_blank"></a>
+  <a class="jiathis_counter_style"></a>
+</div>
+<script type="text/javascript" >
+  var jiathis_config={
+    hideMore:false
+  }
+</script>
+<script type="text/javascript" src="http://v3.jiathis.com/code/jia.js" charset="utf-8"></script>
+<!-- JiaThis Button END -->
+
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+  <div class="comments" id="comments">
+    
+      <div id="hypercomments_widget"></div>
+    
+  </div>
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap" >
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+          <img class="site-author-image" itemprop="image"
+               src="https://avatars0.githubusercontent.com/u/13051472?v=4&u=fee65df1cfdde2dfd87c5f59cf5b4fd302341b18&s=400"
+               alt="SSShooter" />
+          <p class="site-author-name" itemprop="name">SSShooter</p>
+           
+              <p class="site-description motion-element" itemprop="description">ときをきざむうた</p>
+          
+        </div>
+        <nav class="site-state motion-element">
+
+          
+            <div class="site-state-item site-state-posts">
+              <a href="/time-record/archives/">
+                <span class="site-state-item-count">5</span>
+                <span class="site-state-item-name">日志</span>
+              </a>
+            </div>
+          
+
+          
+            
+            
+            <div class="site-state-item site-state-categories">
+              <a href="/time-record/categories/index.html">
+                <span class="site-state-item-count">1</span>
+                <span class="site-state-item-name">分类</span>
+              </a>
+            </div>
+          
+
+          
+            
+            
+            <div class="site-state-item site-state-tags">
+              <a href="/time-record/tags/index.html">
+                <span class="site-state-item-count">1</span>
+                <span class="site-state-item-name">标签</span>
+              </a>
+            </div>
+          
+
+        </nav>
+
+        
+
+        <div class="links-of-author motion-element">
+          
+            
+              <span class="links-of-author-item">
+                <a href="https://github.com/ssshooter" target="_blank" title="GitHub">
+                  
+                    <i class="fa fa-fw fa-github"></i>
+                  
+                    
+                      GitHub
+                    
+                </a>
+              </span>
+            
+              <span class="links-of-author-item">
+                <a href="https://www.linkedin.com/in/%E5%BE%B7%E6%9D%B0-%E5%91%A8-469458bb/" target="_blank" title="Linkedin">
+                  
+                    <i class="fa fa-fw fa-linkedin"></i>
+                  
+                    
+                      Linkedin
+                    
+                </a>
+              </span>
+            
+              <span class="links-of-author-item">
+                <a href="http://weibo.com/472356884" target="_blank" title="Weibo">
+                  
+                    <i class="fa fa-fw fa-weibo"></i>
+                  
+                    
+                      Weibo
+                    
+                </a>
+              </span>
+            
+              <span class="links-of-author-item">
+                <a href="https://twitter.com/zhoudejie" target="_blank" title="Twitter">
+                  
+                    <i class="fa fa-fw fa-twitter"></i>
+                  
+                    
+                      Twitter
+                    
+                </a>
+              </span>
+            
+          
+        </div>
+
+        
+        
+
+        
+        
+          <div class="links-of-blogroll motion-element links-of-blogroll-inline">
+            <div class="links-of-blogroll-title">
+              <i class="fa  fa-fw fa-globe"></i>
+              Links
+            </div>
+            <ul class="links-of-blogroll-list">
+              
+                <li class="links-of-blogroll-item">
+                  <a href="http://skt-studio.com/" title="業後コーヒータイム" target="_blank">業後コーヒータイム</a>
+                </li>
+              
+            </ul>
+          </div>
+        
+
+        
+
+
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#JS的属性"><span class="nav-number">1.</span> <span class="nav-text">JS的属性</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#基础的Vue-js-Observable"><span class="nav-number">2.</span> <span class="nav-text">基础的Vue.js Observable</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#定义一个计算属性"><span class="nav-number">3.</span> <span class="nav-text">定义一个计算属性</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#添加一个依赖跟踪器"><span class="nav-number">4.</span> <span class="nav-text">添加一个依赖跟踪器</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#综合上述代码"><span class="nav-number">5.</span> <span class="nav-text">综合上述代码</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#第一步："><span class="nav-number">5.1.</span> <span class="nav-text">第一步：</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#第二步："><span class="nav-number">5.2.</span> <span class="nav-text">第二步：</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#第三步："><span class="nav-number">5.3.</span> <span class="nav-text">第三步：</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#第四步："><span class="nav-number">5.4.</span> <span class="nav-text">第四步：</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright" >
+  
+  &copy; 
+  <span itemprop="copyrightYear">2017</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">SSShooter</span>
+</div>
+
+
+<div class="powered-by">
+  由 <a class="theme-link" href="https://hexo.io">Hexo</a> 强力驱动
+</div>
+
+<div class="theme-info">
+  主题 -
+  <a class="theme-link" href="https://github.com/iissnan/hexo-theme-next">
+    NexT.Pisces
+  </a>
+</div>
+
+
+        
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script type="text/javascript" src="/time-record/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script type="text/javascript" src="/time-record/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+
+  
+  <script type="text/javascript" src="/time-record/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+
+  
+  <script type="text/javascript" src="/time-record/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script type="text/javascript" src="/time-record/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+  
+  <script type="text/javascript" src="/time-record/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+
+
+  
+
+
+  <script type="text/javascript" src="/time-record/js/src/utils.js?v=5.1.2"></script>
+
+  <script type="text/javascript" src="/time-record/js/src/motion.js?v=5.1.2"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/time-record/js/src/affix.js?v=5.1.2"></script>
+
+  <script type="text/javascript" src="/time-record/js/src/schemes/pisces.js?v=5.1.2"></script>
+
+
+
+  
+  <script type="text/javascript" src="/time-record/js/src/scrollspy.js?v=5.1.2"></script>
+<script type="text/javascript" src="/time-record/js/src/post-details.js?v=5.1.2"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/time-record/js/src/bootstrap.js?v=5.1.2"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+		<script type="text/javascript">
+		_hcwp = window._hcwp || [];
+
+		_hcwp.push({widget:"Bloggerstream", widget_id: 94188, selector:".hc-comment-count", label: "{\%COUNT%\}" });
+
+		
+		_hcwp.push({widget:"Stream", widget_id: 94188, xid: "2017/08/03/【翻译】Vue.js源码分析：计算属性如何工作/"});
+		
+
+		(function() {
+		if("HC_LOAD_INIT" in window)return;
+		HC_LOAD_INIT = true;
+		var lang = (navigator.language || navigator.systemLanguage || navigator.userLanguage || "en").substr(0, 2).toLowerCase();
+		var hcc = document.createElement("script"); hcc.type = "text/javascript"; hcc.async = true;
+		hcc.src = ("https:" == document.location.protocol ? "https" : "http")+"://w.hypercomments.com/widget/hc/94188/"+lang+"/widget.js";
+		var s = document.getElementsByTagName("script")[0];
+		s.parentNode.insertBefore(hcc, s.nextSibling);
+		})();
+		</script>
+
+	
+
+
+
+
+
+
+
+
+
+
+  
+
+  <script type="text/javascript">
+    // Popup Window;
+    var isfetched = false;
+    var isXml = true;
+    // Search DB path;
+    var search_path = "search.xml";
+    if (search_path.length === 0) {
+      search_path = "search.xml";
+    } else if (/json$/i.test(search_path)) {
+      isXml = false;
+    }
+    var path = "/time-record/" + search_path;
+    // monitor main search box;
+
+    var onPopupClose = function (e) {
+      $('.popup').hide();
+      $('#local-search-input').val('');
+      $('.search-result-list').remove();
+      $('#no-result').remove();
+      $(".local-search-pop-overlay").remove();
+      $('body').css('overflow', '');
+    }
+
+    function proceedsearch() {
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay"></div>')
+        .css('overflow', 'hidden');
+      $('.search-popup-overlay').click(onPopupClose);
+      $('.popup').toggle();
+      var $localSearchInput = $('#local-search-input');
+      $localSearchInput.attr("autocapitalize", "none");
+      $localSearchInput.attr("autocorrect", "off");
+      $localSearchInput.focus();
+    }
+
+    // search function;
+    var searchFunc = function(path, search_id, content_id) {
+      'use strict';
+
+      // start loading animation
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay">' +
+          '<div id="search-loading-icon">' +
+          '<i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>' +
+          '</div>' +
+          '</div>')
+        .css('overflow', 'hidden');
+      $("#search-loading-icon").css('margin', '20% auto 0 auto').css('text-align', 'center');
+
+      $.ajax({
+        url: path,
+        dataType: isXml ? "xml" : "json",
+        async: true,
+        success: function(res) {
+          // get the contents from search data
+          isfetched = true;
+          $('.popup').detach().appendTo('.header-inner');
+          var datas = isXml ? $("entry", res).map(function() {
+            return {
+              title: $("title", this).text(),
+              content: $("content",this).text(),
+              url: $("url" , this).text()
+            };
+          }).get() : res;
+          var input = document.getElementById(search_id);
+          var resultContent = document.getElementById(content_id);
+          var inputEventFunction = function() {
+            var searchText = input.value.trim().toLowerCase();
+            var keywords = searchText.split(/[\s\-]+/);
+            if (keywords.length > 1) {
+              keywords.push(searchText);
+            }
+            var resultItems = [];
+            if (searchText.length > 0) {
+              // perform local searching
+              datas.forEach(function(data) {
+                var isMatch = false;
+                var hitCount = 0;
+                var searchTextCount = 0;
+                var title = data.title.trim();
+                var titleInLowerCase = title.toLowerCase();
+                var content = data.content.trim().replace(/<[^>]+>/g,"");
+                var contentInLowerCase = content.toLowerCase();
+                var articleUrl = decodeURIComponent(data.url);
+                var indexOfTitle = [];
+                var indexOfContent = [];
+                // only match articles with not empty titles
+                if(title != '') {
+                  keywords.forEach(function(keyword) {
+                    function getIndexByWord(word, text, caseSensitive) {
+                      var wordLen = word.length;
+                      if (wordLen === 0) {
+                        return [];
+                      }
+                      var startPosition = 0, position = [], index = [];
+                      if (!caseSensitive) {
+                        text = text.toLowerCase();
+                        word = word.toLowerCase();
+                      }
+                      while ((position = text.indexOf(word, startPosition)) > -1) {
+                        index.push({position: position, word: word});
+                        startPosition = position + wordLen;
+                      }
+                      return index;
+                    }
+
+                    indexOfTitle = indexOfTitle.concat(getIndexByWord(keyword, titleInLowerCase, false));
+                    indexOfContent = indexOfContent.concat(getIndexByWord(keyword, contentInLowerCase, false));
+                  });
+                  if (indexOfTitle.length > 0 || indexOfContent.length > 0) {
+                    isMatch = true;
+                    hitCount = indexOfTitle.length + indexOfContent.length;
+                  }
+                }
+
+                // show search results
+
+                if (isMatch) {
+                  // sort index by position of keyword
+
+                  [indexOfTitle, indexOfContent].forEach(function (index) {
+                    index.sort(function (itemLeft, itemRight) {
+                      if (itemRight.position !== itemLeft.position) {
+                        return itemRight.position - itemLeft.position;
+                      } else {
+                        return itemLeft.word.length - itemRight.word.length;
+                      }
+                    });
+                  });
+
+                  // merge hits into slices
+
+                  function mergeIntoSlice(text, start, end, index) {
+                    var item = index[index.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    var hits = [];
+                    var searchTextCountInSlice = 0;
+                    while (position + word.length <= end && index.length != 0) {
+                      if (word === searchText) {
+                        searchTextCountInSlice++;
+                      }
+                      hits.push({position: position, length: word.length});
+                      var wordEnd = position + word.length;
+
+                      // move to next position of hit
+
+                      index.pop();
+                      while (index.length != 0) {
+                        item = index[index.length - 1];
+                        position = item.position;
+                        word = item.word;
+                        if (wordEnd > position) {
+                          index.pop();
+                        } else {
+                          break;
+                        }
+                      }
+                    }
+                    searchTextCount += searchTextCountInSlice;
+                    return {
+                      hits: hits,
+                      start: start,
+                      end: end,
+                      searchTextCount: searchTextCountInSlice
+                    };
+                  }
+
+                  var slicesOfTitle = [];
+                  if (indexOfTitle.length != 0) {
+                    slicesOfTitle.push(mergeIntoSlice(title, 0, title.length, indexOfTitle));
+                  }
+
+                  var slicesOfContent = [];
+                  while (indexOfContent.length != 0) {
+                    var item = indexOfContent[indexOfContent.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    // cut out 100 characters
+                    var start = position - 20;
+                    var end = position + 80;
+                    if(start < 0){
+                      start = 0;
+                    }
+                    if (end < position + word.length) {
+                      end = position + word.length;
+                    }
+                    if(end > content.length){
+                      end = content.length;
+                    }
+                    slicesOfContent.push(mergeIntoSlice(content, start, end, indexOfContent));
+                  }
+
+                  // sort slices in content by search text's count and hits' count
+
+                  slicesOfContent.sort(function (sliceLeft, sliceRight) {
+                    if (sliceLeft.searchTextCount !== sliceRight.searchTextCount) {
+                      return sliceRight.searchTextCount - sliceLeft.searchTextCount;
+                    } else if (sliceLeft.hits.length !== sliceRight.hits.length) {
+                      return sliceRight.hits.length - sliceLeft.hits.length;
+                    } else {
+                      return sliceLeft.start - sliceRight.start;
+                    }
+                  });
+
+                  // select top N slices in content
+
+                  var upperBound = parseInt('1');
+                  if (upperBound >= 0) {
+                    slicesOfContent = slicesOfContent.slice(0, upperBound);
+                  }
+
+                  // highlight title and content
+
+                  function highlightKeyword(text, slice) {
+                    var result = '';
+                    var prevEnd = slice.start;
+                    slice.hits.forEach(function (hit) {
+                      result += text.substring(prevEnd, hit.position);
+                      var end = hit.position + hit.length;
+                      result += '<b class="search-keyword">' + text.substring(hit.position, end) + '</b>';
+                      prevEnd = end;
+                    });
+                    result += text.substring(prevEnd, slice.end);
+                    return result;
+                  }
+
+                  var resultItem = '';
+
+                  if (slicesOfTitle.length != 0) {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + highlightKeyword(title, slicesOfTitle[0]) + "</a>";
+                  } else {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + title + "</a>";
+                  }
+
+                  slicesOfContent.forEach(function (slice) {
+                    resultItem += "<a href='" + articleUrl + "'>" +
+                      "<p class=\"search-result\">" + highlightKeyword(content, slice) +
+                      "...</p>" + "</a>";
+                  });
+
+                  resultItem += "</li>";
+                  resultItems.push({
+                    item: resultItem,
+                    searchTextCount: searchTextCount,
+                    hitCount: hitCount,
+                    id: resultItems.length
+                  });
+                }
+              })
+            };
+            if (keywords.length === 1 && keywords[0] === "") {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-search fa-5x" /></div>'
+            } else if (resultItems.length === 0) {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-frown-o fa-5x" /></div>'
+            } else {
+              resultItems.sort(function (resultLeft, resultRight) {
+                if (resultLeft.searchTextCount !== resultRight.searchTextCount) {
+                  return resultRight.searchTextCount - resultLeft.searchTextCount;
+                } else if (resultLeft.hitCount !== resultRight.hitCount) {
+                  return resultRight.hitCount - resultLeft.hitCount;
+                } else {
+                  return resultRight.id - resultLeft.id;
+                }
+              });
+              var searchResultList = '<ul class=\"search-result-list\">';
+              resultItems.forEach(function (result) {
+                searchResultList += result.item;
+              })
+              searchResultList += "</ul>";
+              resultContent.innerHTML = searchResultList;
+            }
+          }
+
+          if ('auto' === 'auto') {
+            input.addEventListener('input', inputEventFunction);
+          } else {
+            $('.search-icon').click(inputEventFunction);
+            input.addEventListener('keypress', function (event) {
+              if (event.keyCode === 13) {
+                inputEventFunction();
+              }
+            });
+          }
+
+          // remove loading animation
+          $(".local-search-pop-overlay").remove();
+          $('body').css('overflow', '');
+
+          proceedsearch();
+        }
+      });
+    }
+
+    // handle and trigger popup window;
+    $('.popup-trigger').click(function(e) {
+      e.stopPropagation();
+      if (isfetched === false) {
+        searchFunc(path, 'local-search-input', 'local-search-result');
+      } else {
+        proceedsearch();
+      };
+    });
+
+    $('.popup-btn-close').click(onPopupClose);
+    $('.popup').click(function(e){
+      e.stopPropagation();
+    });
+    $(document).on('keyup', function (event) {
+      var shouldDismissSearchPopup = event.which === 27 &&
+        $('.search-popup').is(':visible');
+      if (shouldDismissSearchPopup) {
+        onPopupClose();
+      }
+    });
+  </script>
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
